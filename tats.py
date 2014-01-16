@@ -10,8 +10,8 @@ config = ConfigParser.SafeConfigParser()
 config.read('settings.cfg')
 
 credentials = dict(config.items('credentials'))
-top_since = long(config.get('since', 'top'))
-mentions_since = long(config.get('since', 'mentions'))
+top_since = config.getint('since', 'top')
+mentions_since = config.getint('since', 'mentions')
 
 
 # Slightly modified version of code from:
@@ -37,12 +37,13 @@ points = [
     (17, 77), (44, 77), (77, 77), (119, 77),
     (159, 82), (196, 82), (228, 82), (260, 82)
 ]
-last_text = ''
 q = PriorityQueue()
 
 
-def make_tat():
-    if len(q):
+def make_tat(text=None):
+    if text:
+        text = text
+    elif len(q):
         text = q.pop()
     else:
         latest = T.GetUser(screen_name='knuckle_tat').GetStatus()
@@ -64,35 +65,42 @@ def make_tat():
         command.extend(['-draw', 'text %i,%i %s' % (p[0], p[1], t)])
     command.append(out_image)
     subprocess.call(command)
-    return text, out_image
+    return letters, out_image
 
 
-def post_tat(text, image):
-    T.PostMedia(text, image)
+def post_tat(text, image, reply_to=None):
+    T.PostMedia(text, image, in_reply_to_status_id=reply_to)
+    #print "Would tweet: \n",text,"  ",image,"  ",reply_to,"\n\n"
 
 
 def get_top():
     global q
+    global top_since
     tweets = T.GetSearch("from:knuckle_tat", result_type='recent',
-                         include_entities=False, count=100)
+                         include_entities=False, count=200, since_id=top_since)
     top = [
         {"text": t.text, "faves": t.favorite_count, "rts": t.retweet_count}
         for t in tweets if t.favorite_count or t.retweet_count
     ]
-    for t in top:
-        q.push(**t)
-    sys.stdout.write("Current queue length: %i\n" % len(q))
-    sys.stdout.flush()
 
-
-def make_and_post():
-    global last_text
-    new_tat = make_tat()
-    if new_tat[0] != last_text:
-        post_tat(*new_tat)
-        sys.stdout.write("DONE!\n")
+    if len(top):
+        for t in top:
+            q.push(**t)
+        top_since = long(tweets[0].id) + 1
+        config.set('since', 'top', str(top_since))
+        with open('settings.cfg', 'wb') as configfile:
+            config.write(configfile)
+        sys.stdout.write("Current queue length: %i\n" % len(q))
+        sys.stdout.flush()
     else:
-        sys.stdout.write("DUPE! Not sending.\n")
+        sys.stdout.write("Adding nothing to queue.\n")
+        sys.stdout.flush()
+
+def make_and_post(text=None, reply_to=None):
+    new_tat = make_tat(text)
+    post_tat(*new_tat,reply_to=reply_to)
+    sys.stdout.write("DONE!\n")
+    sys.stdout.flush()
     try:
         os.remove(new_tat[1])
     except IOError as e:
