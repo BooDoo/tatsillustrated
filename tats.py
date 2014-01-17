@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import subprocess
 import heapq
 import twitter
@@ -65,11 +66,11 @@ def make_tat(text=None):
         command.extend(['-draw', 'text %i,%i %s' % (p[0], p[1], t)])
     command.append(out_image)
     subprocess.call(command)
-    return letters, out_image
+    return text, out_image
 
 
 def post_tat(text, image, reply_to=None):
-    T.PostMedia(text, image, in_reply_to_status_id=reply_to)
+    T.PostMedia(text, image, in_reply_to_status_id=str(reply_to))
     #print "Would tweet: \n",text,"  ",image,"  ",reply_to,"\n\n"
 
 
@@ -96,6 +97,38 @@ def get_top():
         sys.stdout.write("Adding nothing to queue.\n")
         sys.stdout.flush()
 
+def do_mentions():
+    global q
+    global mentions_since
+    mentions = T.GetMentions(
+        include_entities=False, count=200, since_id=mentions_since
+    )
+    sys.stdout.write("Found " + str(len(mentions)) + " mentions...\n")
+    sys.stdout.flush()
+    for m in mentions:
+        if m.in_reply_to_status_id and m.in_reply_to_screen_name == 'knuckle_tat':
+            #Get the status with that id, generate
+            tweet = T.GetStatus(m.in_reply_to_status_id)
+            sys.stdout.write("They replied to knuckle_tat!\n")
+            sys.stdout.flush()
+            text = tweet.text + " for @" + m.user.screen_name
+            make_and_post(text, m.id)
+        else:
+            text = m.text.replace(' ','')
+            found = re.search(r'(?<![A-Z])[A-Z]{8}(?![A-Z])', text)
+            if found:
+                text = (text[found.start():found.end()] +
+                        " for @" + m.user.screen_name)
+                sys.stdout.write("They want us to make one!\n")
+                sys.stdout.flush()
+                make_and_post(text, m.id)
+    if len(mentions):
+        mentions_since = long(mentions[0].id) + 1
+        config.set('since', 'mentions', str(mentions_since))
+        with open('settings.cfg', 'wb') as configfile:
+            config.write(configfile)
+
+
 def make_and_post(text=None, reply_to=None):
     new_tat = make_tat(text)
     post_tat(*new_tat,reply_to=reply_to)
@@ -111,6 +144,8 @@ def make_and_post(text=None, reply_to=None):
 if __name__ == '__main__':
     print "Running from console..."
     get_top()
+    do_mentions()
     make_and_post()
-    top_timer = set_interval(60*210, get_top)
+    mention_timer = set_interval(60*5, do_mentions)
+    top_timer = set_interval(60*60, get_top)
     post_timer = set_interval(60*60, make_and_post)
