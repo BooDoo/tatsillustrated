@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 import re
@@ -9,7 +11,7 @@ from RepeatedTimer import RepeatedTimer as set_interval
 
 config = ConfigParser.SafeConfigParser()
 config.read('settings.cfg')
-
+re_mention = r'(?<![A-Z])[A-Z\?\!\¡\.\-\/\$\%\&\@\#\*\(\)\:\;\_\¢\?\¿\'\"]{8}(?![A-Z])'
 credentials = dict(config.items('credentials'))
 top_since = config.getint('since', 'top')
 mentions_since = config.getint('since', 'mentions')
@@ -115,7 +117,7 @@ def do_mentions():
             make_and_post(text, m.id)
         else:
             text = m.text.replace(' ','')
-            found = re.search(r'(?<![A-Z])[A-Z]{8}(?![A-Z])', text)
+            found = re.search(re_mention, text)
             if found:
                 text = (text[found.start():found.end()] +
                         " for @" + m.user.screen_name)
