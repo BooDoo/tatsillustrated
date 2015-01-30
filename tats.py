@@ -11,7 +11,7 @@ from RepeatedTimer import RepeatedTimer as set_interval
 
 config = ConfigParser.SafeConfigParser()
 config.read('settings.cfg')
-re_mention = r'(?<![A-Z])[A-Z\?\!\¡\.\-\/\$\%\&\@\#\*\(\)\:\;\_\¢\?\¿\'\"]{8}(?![A-Z])'
+re_mention = r'(?<![A-Z0-9])[0-9A-Z\?\!\.\-\/\$\%\&\@\#\*\(\)\:\;\_]{8}'
 credentials = dict(config.items('credentials'))
 top_since = config.getint('since', 'top')
 mentions_since = config.getint('since', 'mentions')
@@ -145,9 +145,12 @@ def make_and_post(text=None, reply_to=None):
 
 if __name__ == '__main__':
     print "Running from console..."
+    global mentions_since
+    global top_since
     get_top()
-    do_mentions()
-    make_and_post()
+    mentions_since = top_since
+    # do_mentions()
+    # make_and_post()
     mention_timer = set_interval(60*5, do_mentions)
-    top_timer = set_interval(60*60, get_top)
-    post_timer = set_interval(60*60, make_and_post)
+    top_timer = set_interval(60*60*4, get_top)
+    post_timer = set_interval(60*60*8, make_and_post)
