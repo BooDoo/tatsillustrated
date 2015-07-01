@@ -59,7 +59,7 @@ def make_tat(text=None, out_image=None):
     command.extend(['-font', 'loveletter-typewriter.ttf'])
     command.extend(['-pointsize', '32'])
     for p, t in tat:
-        command.extend(['-draw', 'text %i,%i %s' % (p[0], p[1], t)])
+        command.extend(['-draw', 'text %i,%i \'%s\'' % (p[0], p[1], t)])
     command.append(out_image)
     subprocess.call(command)
     return text, out_image
