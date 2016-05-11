@@ -4,7 +4,7 @@
 import os
 import sys
 import subprocess
-import twitter
+from twitter import OAuth, Twitter
 import argparse
 import ConfigParser
 from RepeatedTimer import RepeatedTimer as set_interval
@@ -37,7 +37,13 @@ args = parser.parse_args()
 
 config = ConfigParser.SafeConfigParser()
 config.read('settings.cfg')
-credentials = dict(config.items('credentials'))
+credentials_dict = dict(config.items('credentials'))
+credentials = [
+    credentials_dict.get('access_token_key'),
+    credentials_dict.get('access_token_secret'),
+    credentials_dict.get('consumer_key'),
+    credentials_dict.get('consumer_secret')
+        ]
 points = [
     (17, 77), (44, 77), (77, 77), (119, 77),
     (159, 82), (196, 82), (228, 82), (260, 82)
@@ -64,14 +70,24 @@ def make_tat(text=None, out_image=None):
     subprocess.call(command)
     return text, out_image
 
+def upload_images(*imgs):
+    T_up = Twitter(domain='upload.twitter.com', auth=OAuth(*credentials))
+    media_ids = []
+    for img in imgs:
+        with open(img, "rb") as imagefile:
+            imagedata = imagefile.read()
+        media_ids.append(T_up.media.upload(media=imagedata)["media_id_string"])
+    return media_ids
+
 if __name__ == '__main__':
     if args.upload:
-        T = twitter.Api(**credentials)
+        T = Twitter(auth=OAuth(*credentials))
     text = args.text or 'TEST ING!'
     out_image = args.outfile
     new_tat = make_tat(text, out_image)
     if args.upload:
-        T.PostMedia(*new_tat)
+        media_ids = upload_images(new_tat[1])
+        T.statuses.update(status=new_tat[0], media_ids=",".join(media_ids))
     if args.cleanup:
         os.remove(out_image)
     sys.stdout.write("DONE!\n\n")
