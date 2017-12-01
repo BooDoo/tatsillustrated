@@ -163,12 +163,12 @@ def make_and_post(text=None, reply_to=None):
 
 if __name__ == '__main__':
     print "Running from console..."
-    global mentions_since
-    global top_since
     get_top()
-    mentions_since = top_since
+    mentions_since = mentions_since or long(T.users.show(screen_name='tatsillustrated').get('status').get('id'))
+    print "top_since is " + str(top_since)
+    print "mentions_since is " + str(mentions_since)
     # do_mentions()
     # make_and_post()
-    mention_timer = set_interval(60*3, do_mentions)
+    mention_timer = set_interval(60*2, do_mentions)
     top_timer = set_interval(60*60*4, get_top)
     post_timer = set_interval(60*60*8, make_and_post)
